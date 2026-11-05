@@ -1,0 +1,8 @@
+{
+  "name": "cyberphysical-semester-proj",
+  "version": "1.0",
+  "dependencies": [
+    "physx",
+    "v-hacd"
+  ]
+}
