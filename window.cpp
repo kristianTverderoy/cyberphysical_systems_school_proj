@@ -1,32 +1,45 @@
-#include "threepp/geometries/BoxGeometry.hpp"
-#include "threepp/geometries/CircleGeometry.hpp"
+#include "threepp/animation/AnimationMixer.hpp"
+#include "threepp/cameras/PerspectiveCamera.hpp"
+#include "threepp/canvas/Canvas.hpp"
+#include "threepp/constants.hpp"
+#include "threepp/controls/OrbitControls.hpp"
+#include "threepp/core/Clock.hpp"
+#include "threepp/geometries/PlaneGeometry.hpp"
+#include "threepp/lights/HemisphereLight.hpp"
+#include "threepp/loaders/AsyncGroup.hpp"
+#include "threepp/loaders/GLTFLoader.hpp"
+#include "threepp/loaders/ModelLoader.hpp"
 #include "threepp/loaders/OBJLoader.hpp"
+#include "threepp/loaders/TextureLoader.hpp"
+#include "threepp/materials/MeshLambertMaterial.hpp"
 #include "threepp/materials/MeshPhongMaterial.hpp"
-#include "threepp/materials/MeshPhysicalMaterial.hpp"
-#include "threepp/materials/interfaces.hpp"
-#include "threepp/threepp.hpp"
+#include "threepp/objects/Mesh.hpp"
+#include "threepp/renderers/GLRenderer.hpp"
+#include "threepp/scenes/Scene.hpp"
+#include <iostream>
+#include <memory>
 
 using namespace threepp;
 
-auto createBox(const Vector3 &pos, const Color &color) {
-  auto geometry = BoxGeometry::create();
-  auto material = MeshPhongMaterial::create();
-  material->color = color;
+// auto createBox(const Vector3 &pos, const Color &color) {
+//   auto geometry = BoxGeometry::create();
+//   auto material = MeshPhongMaterial::create();
+//   material->color = color;
+//
+//   auto box = Mesh::create(geometry, material);
+//   box->position.copy(pos);
+//
+//   return box;
+// }
 
-  auto box = Mesh::create(geometry, material);
-  box->position.copy(pos);
-
-  return box;
-}
-
-auto createSphere(const Vector3 &pos, const Color &color) {
-  auto geometry = SphereGeometry::create();
-  auto material = MeshPhongMaterial::create();
-  material->color = color;
-  auto ball = Mesh::create(geometry, material);
-  ball->position.copy(pos);
-  return ball;
-}
+// auto createSphere(const Vector3 &pos, const Color &color) {
+//   auto geometry = SphereGeometry::create();
+//   auto material = MeshPhongMaterial::create();
+//   material->color = color;
+//   auto ball = Mesh::create(geometry, material);
+//   ball->position.copy(pos);
+//   return ball;
+// }
 
 auto createPlane() {
   auto planeGeometry = PlaneGeometry::create(5, 5);
@@ -43,8 +56,9 @@ auto createPlane() {
 
 int main() {
 
-  Canvas canvas{"Demo"};
+  Canvas canvas{"Project"};
   GLRenderer renderer{canvas};
+  renderer.shadowMap().enabled = true;
 
   auto scene = Scene::create();
   auto camera = PerspectiveCamera::create(75, canvas.aspect(), 0.1f, 100.f);
@@ -58,12 +72,31 @@ int main() {
 
   auto plane = createPlane();
   scene->add(plane);
+  // TextureLoader textureLoader;
+  // auto texture = textureLoader.load(
+  //     "./models/",
+  //     ColorSpace::sRGB);
 
-  auto group = Group::create();
-  group->add(createBox({-1, 0, 0}, Color::red));
-  group->add(createBox({1, 0, 0}, Color::green));
-  group->add(createSphere({0, 0, 0}, Color::lightseagreen));
-  scene->add(group);
+  GLTFLoader loader;
+  auto result = loader.load("./models/Cute_Demon.glb");
+  if (!result) {
+    std::cerr << "Failed to load model" << "\n";
+    return 1;
+  }
+  auto &model = result->scene;
+  model->traverseType<Mesh>([](Mesh &m) {
+    m.castShadow = true;
+    m.receiveShadow = true;
+  });
+  scene->add(model);
+
+  AnimationMixer mixer(*model);
+  std::cout << "Animations found: " << result->animations.size() << "\n";
+  if (!result->animations.empty()) {
+    mixer.clipAction(result->animations[0])->play();
+  } else {
+    std::cerr << "No animation in file\n";
+  }
 
   canvas.onWindowResize([&camera, &renderer](WindowSize size) {
     camera->aspect = size.aspect();
@@ -74,7 +107,8 @@ int main() {
   Clock clock;
   canvas.animate([&] {
     const auto dt = clock.getDelta();
-    group->rotation.y += 10.f * dt;
+    mixer.update(dt);
+    // group->rotation.y += 1.f * dt;
 
     renderer.render(*scene, *camera);
   });
