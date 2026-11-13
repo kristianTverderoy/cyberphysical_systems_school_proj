@@ -78,7 +78,7 @@ int main() {
   //     ColorSpace::sRGB);
 
   GLTFLoader loader;
-  auto result = loader.load("./models/Cute_Demon.glb");
+  auto result = loader.load("./3d/models/seagull.glb");
   if (!result) {
     std::cerr << "Failed to load model" << "\n";
     return 1;
