@@ -1,0 +1,9 @@
+Using msvc to build:
+  - Make sure msvc compiler is downloaded via Visual Studio 
+  - type into terminal (any should work) (must be at the root of the project also):
+    - cmake -B msvc-build -G "Visual Studio 18 2026" -A x64 
+    - cmake --build msvc-build/ --config Release 
+  - exe file should then be in ./msvc-build/Release/window.exe
+
+Using gcc to build:
+
