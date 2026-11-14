@@ -12,6 +12,8 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE        # fetch only the tip to keep the download small
 )
 FetchContent_MakeAvailable(threepp)
+find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
+
 
 add_executable(window)
 
@@ -25,4 +27,4 @@ if(MINGW)
   target_link_options(window PRIVATE -static -static-libgcc -static-libstdc++)
 endif()
 target_sources(window PRIVATE window.cpp)
-target_link_libraries(window PRIVATE threepp::threepp)
+target_link_libraries(window PRIVATE threepp::threepp unofficial::omniverse-physx-sdk::sdk)

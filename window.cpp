@@ -21,26 +21,6 @@
 
 using namespace threepp;
 
-// auto createBox(const Vector3 &pos, const Color &color) {
-//   auto geometry = BoxGeometry::create();
-//   auto material = MeshPhongMaterial::create();
-//   material->color = color;
-//
-//   auto box = Mesh::create(geometry, material);
-//   box->position.copy(pos);
-//
-//   return box;
-// }
-
-// auto createSphere(const Vector3 &pos, const Color &color) {
-//   auto geometry = SphereGeometry::create();
-//   auto material = MeshPhongMaterial::create();
-//   material->color = color;
-//   auto ball = Mesh::create(geometry, material);
-//   ball->position.copy(pos);
-//   return ball;
-// }
-
 auto createPlane() {
   auto planeGeometry = PlaneGeometry::create(5, 5);
   auto planeMaterial = MeshLambertMaterial::create();
