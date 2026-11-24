@@ -1,16 +1,23 @@
+#include "entity/Fish.hpp"
+#include "entity/FishEntity.hpp"
 #include "threepp/animation/AnimationMixer.hpp"
 #include "threepp/cameras/PerspectiveCamera.hpp"
 #include "threepp/canvas/Canvas.hpp"
 #include "threepp/constants.hpp"
 #include "threepp/controls/OrbitControls.hpp"
 #include "threepp/core/Clock.hpp"
+#include "threepp/geometries/BoxGeometry.hpp"
 #include "threepp/geometries/PlaneGeometry.hpp"
+#include "threepp/geometries/SphereGeometry.hpp"
+#include "threepp/helpers/CameraSensor.hpp"
+#include "threepp/helpers/LidarSensor.hpp"
 #include "threepp/lights/HemisphereLight.hpp"
 #include "threepp/loaders/AsyncGroup.hpp"
 #include "threepp/loaders/GLTFLoader.hpp"
 #include "threepp/loaders/ModelLoader.hpp"
 #include "threepp/loaders/OBJLoader.hpp"
 #include "threepp/loaders/TextureLoader.hpp"
+#include "threepp/materials/MeshBasicMaterial.hpp"
 #include "threepp/materials/MeshLambertMaterial.hpp"
 #include "threepp/materials/MeshPhongMaterial.hpp"
 #include "threepp/objects/Mesh.hpp"
@@ -63,14 +70,34 @@ int main() {
     std::cerr << "Failed to load model" << "\n";
     return 1;
   }
-  auto &model = result->scene;
-  model->traverseType<Mesh>([](Mesh &m) {
+  auto &seagullModel = result->scene;
+  seagullModel->scale.set(0.1f, 0.1f, 0.1f);
+  seagullModel->traverseType<Mesh>([](Mesh &m) {
     m.castShadow = true;
     m.receiveShadow = true;
   });
-  scene->add(model);
+  scene->add(seagullModel);
 
-  AnimationMixer mixer(*model);
+  std::vector<std::shared_ptr<Fish>> fishList;
+  for (int i = 0; i < 5; i++) {
+    auto fish = std::make_shared<Fish>();
+    fish->setPosition(2.0f * static_cast<float>(i) - 4.0f, -0.5f, -1.0f);
+    scene->add(fish->getMesh());
+    fishList.push_back(fish);
+  }
+
+  auto sensorGeometry = SphereGeometry::create(0.05f);
+  auto sensorMat = MeshBasicMaterial::create();
+  sensorMat->color = Color::red;
+  auto sensor = Mesh::create(sensorGeometry, sensorMat);
+  sensor->position.set(0, 0.5f, 2.0f);
+  seagullModel->add(sensor);
+
+  auto cameraSensor =
+      std::make_shared<threepp::CameraSensor>(60.f, 640, 480, 0.1f, 100.f);
+  seagullModel->add(cameraSensor);
+
+  AnimationMixer mixer(*seagullModel);
   std::cout << "Animations found: " << result->animations.size() << "\n";
   if (!result->animations.empty()) {
     mixer.clipAction(result->animations[0])->play();
@@ -88,7 +115,16 @@ int main() {
   canvas.animate([&] {
     const auto dt = clock.getDelta();
     mixer.update(dt);
-    // group->rotation.y += 1.f * dt;
+    if (cameraSensor) {
+      cameraSensor->capture(renderer, *scene);
+      auto image = cameraSensor->image();
+    }
+    if (fishList.size() > 0) {
+      for (const auto &fish : fishList) {
+        fish->biasedRandomMove(0, 0, 0.7);
+        // fish->randomMove();
+      }
+    }
 
     renderer.render(*scene, *camera);
   });
