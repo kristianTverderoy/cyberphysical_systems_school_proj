@@ -1,10 +1,12 @@
 #pragma once
+#include "../utility/RandomGenerator.hpp"
 #include "threepp/geometries/SphereGeometry.hpp"
 #include "threepp/materials/MeshBasicMaterial.hpp"
 #include "threepp/objects/Mesh.hpp"
 
 #include <cstdint>
 #include <cstdlib>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <stdint.h>
@@ -19,9 +21,10 @@ class Fish {
 
 private:
   std::shared_ptr<threepp::Mesh> mesh;
-  int32_t xLocation;
-  int32_t yLocation;
-  int32_t zLocation;
+  double xLocation;
+  double yLocation;
+  double zLocation;
+  RandomGenerator randomizer;
   void updateMesh() {
     this->mesh->position.set(this->xLocation, this->yLocation, this->zLocation);
   }
@@ -44,31 +47,15 @@ public:
    * move in this range of numbers -1.000 -> 1.000
    */
   void randomMove() {
-    int32_t xDirectionLength = rand() % 101;
-    int32_t yDirectionLength = rand() % 101;
-    int32_t zDirectionLength = rand() % 101;
-
-    const int xPosOrNegDirection = rand() % 2;
-    const int yPosOrNegDirection = rand() % 2;
-    int zPosOrNegDirection = rand() % 2;
-
-    if (xPosOrNegDirection == 1) {
-      xDirectionLength = -xDirectionLength;
-    }
-    if (yPosOrNegDirection == 1) {
+    double xDirectionLength = randomizer.getRandomDouble(-100, 100);
+    double yDirectionLength = randomizer.getRandomDouble(-100, 100);
+    double zDirectionLength = randomizer.getRandomDouble(-100, 100);
+    if ((yLocation + (yDirectionLength / 100.0)) > 0) {
       yDirectionLength = -yDirectionLength;
     }
-    if (zPosOrNegDirection == 1) {
-      zDirectionLength = -zDirectionLength;
-    }
-    if ((zLocation + (zDirectionLength / 100) * zPosOrNegDirection) > 0) {
-      zPosOrNegDirection = -zPosOrNegDirection;
-    }
-
-    this->xLocation += (xDirectionLength / 100) * xPosOrNegDirection;
-    this->yLocation += (yDirectionLength / 100) * yPosOrNegDirection;
-    this->zLocation += (zDirectionLength / 100) * zPosOrNegDirection;
-
+    this->xLocation += (xDirectionLength / 2000.0);
+    this->yLocation += (yDirectionLength / 2000.0);
+    this->zLocation += (zDirectionLength / 2000.0);
     updateMesh();
   }
 
@@ -82,42 +69,41 @@ public:
    *
    * @input all values should be between -1 and 1.
    */
-  // TODO: This function doesnt use the biasees. Need to make that work.
-  void biasedRandomMove(float const xBias, float const yBias,
-                        float const zBias) {
-    if (xBias < -1 || xBias > 1 || yBias < -1 || yBias > 1 || zBias < -1 ||
-        zBias > 1) {
+  void biasedRandomMove(double const xBias, double const yBias,
+                        double const zBias) {
+    if (!(xBias >= -1.0 && xBias <= 1.0) || !(yBias >= -1.0 && yBias <= 1.0) ||
+        !(zBias >= -1.0 && zBias <= 1.0)) {
       throw std::invalid_argument(
           "One or more bias values were off. They should be between -1 and 1, "
           "but they were as follows: xBias: " +
           std::to_string(xBias) + ", yBias: " + std::to_string(yBias) +
           ", zBias: " + std::to_string(zBias) + ".");
     }
-    int32_t xDirectionLength = rand() % 101;
-    int32_t yDirectionLength = rand() % 101;
-    int32_t zDirectionLength = rand() % 101;
 
-    // Let 1 == negative, and 2 == positive
-    const int xPosOrNegDirection = rand() % 2;
-    const int yPosOrNegDirection = rand() % 2;
-    int zPosOrNegDirection = rand() % 2;
+    // Step lengths are always positive here; the bias decides the sign
+    double xDirectionLength = randomizer.getRandomDouble(0, 100);
+    double yDirectionLength = randomizer.getRandomDouble(0, 100);
+    double zDirectionLength = randomizer.getRandomDouble(0, 100);
 
-    if (xPosOrNegDirection == 1) {
+    // bias -1 -> 0% positive, 0 -> 50%, +1 -> 100%
+    if (randomizer.getRandomDouble(0, 1) >= (1.0 + xBias) / 2.0) {
       xDirectionLength = -xDirectionLength;
     }
-    if (yPosOrNegDirection == 1) {
+    if (randomizer.getRandomDouble(0, 1) >= (1.0 + yBias) / 2.0) {
       yDirectionLength = -yDirectionLength;
     }
-    if (zPosOrNegDirection == 1) {
+    if (randomizer.getRandomDouble(0, 1) >= (1.0 + zBias) / 2.0) {
       zDirectionLength = -zDirectionLength;
     }
-    if ((zLocation + (zDirectionLength / 100) * zPosOrNegDirection) > 0) {
-      zPosOrNegDirection = -zPosOrNegDirection;
+
+    // Same constraint as your randomMove: don't let y go above 0
+    if ((yLocation + (yDirectionLength / 100.0)) > 0) {
+      yDirectionLength = -yDirectionLength;
     }
 
-    this->xLocation += (xDirectionLength / 100) * xPosOrNegDirection;
-    this->yLocation += (yDirectionLength / 100) * yPosOrNegDirection;
-    this->zLocation += (zDirectionLength / 100) * zPosOrNegDirection;
+    this->xLocation += (xDirectionLength / 2000.0);
+    this->yLocation += (yDirectionLength / 2000.0);
+    this->zLocation += (zDirectionLength / 2000.0);
     updateMesh();
   }
 
