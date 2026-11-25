@@ -1,5 +1,5 @@
+#include "./entity/Seagull.hpp"
 #include "entity/Fish.hpp"
-#include "entity/FishEntity.hpp"
 #include "threepp/animation/AnimationMixer.hpp"
 #include "threepp/cameras/PerspectiveCamera.hpp"
 #include "threepp/canvas/Canvas.hpp"
@@ -29,13 +29,16 @@
 using namespace threepp;
 
 auto createPlane() {
-  auto planeGeometry = PlaneGeometry::create(5, 5);
+  auto planeGeometry = PlaneGeometry::create(20, 20);
   auto planeMaterial = MeshLambertMaterial::create();
   planeMaterial->color = Color::gray;
   planeMaterial->side = Side::Double;
 
   auto plane = Mesh::create(planeGeometry, planeMaterial);
+  plane->position.x = 0;
   plane->position.y = -1;
+  plane->position.z = 0;
+
   plane->rotateX(math::degToRad(90));
 
   return plane;
@@ -71,12 +74,16 @@ int main() {
     return 1;
   }
   auto &seagullModel = result->scene;
+  seagullModel->position.set(0, 0.0f, 0.0);
   seagullModel->scale.set(0.1f, 0.1f, 0.1f);
   seagullModel->traverseType<Mesh>([](Mesh &m) {
     m.castShadow = true;
     m.receiveShadow = true;
   });
   scene->add(seagullModel);
+  Seagull seagull(0.0, 15.0, 0.0);
+  seagull.setModel(seagullModel);
+  scene->add(seagull.getModel());
 
   std::vector<std::shared_ptr<Fish>> fishList;
   for (int i = 0; i < 5; i++) {
@@ -115,14 +122,19 @@ int main() {
   canvas.animate([&] {
     const auto dt = clock.getDelta();
     mixer.update(dt);
+    seagull.flyCircularly();
+    seagullModel->position.set(seagull.getXPos(), seagull.getYPos(),
+                               seagull.getZPos());
+    std::cout << seagullModel->position.x << ", " << seagullModel->position.z
+              << ", " << seagullModel->position.y << "\n";
     if (cameraSensor) {
       cameraSensor->capture(renderer, *scene);
       auto image = cameraSensor->image();
     }
     if (fishList.size() > 0) {
       for (const auto &fish : fishList) {
-        fish->biasedRandomMove(0, 0, 0.7);
         // fish->randomMove();
+        fish->biasedRandomMove(0.001, -0.8, -0.001);
       }
     }
 
