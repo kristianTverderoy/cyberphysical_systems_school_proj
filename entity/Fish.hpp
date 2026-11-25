@@ -3,10 +3,7 @@
 #include "threepp/geometries/SphereGeometry.hpp"
 #include "threepp/materials/MeshBasicMaterial.hpp"
 #include "threepp/objects/Mesh.hpp"
-
 #include <cstdint>
-#include <cstdlib>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <stdint.h>
