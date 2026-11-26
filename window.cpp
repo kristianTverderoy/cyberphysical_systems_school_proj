@@ -82,6 +82,7 @@ int main() {
   });
   scene->add(seagullModel);
   Seagull seagull(0.0, 15.0, 0.0);
+  seagull.setBehaviour(Seagull::Behaviour::FlyCircularly);
   seagull.setModel(seagullModel);
   scene->add(seagull.getModel());
 
@@ -89,6 +90,7 @@ int main() {
   for (int i = 0; i < 5; i++) {
     auto fish = std::make_shared<Fish>();
     fish->setPosition(2.0f * static_cast<float>(i) - 4.0f, -0.5f, -1.0f);
+    fish->setBehaviour(Fish::Behaviour::RandomMove);
     scene->add(fish->getMesh());
     fishList.push_back(fish);
   }
@@ -122,7 +124,6 @@ int main() {
   canvas.animate([&] {
     const auto dt = clock.getDelta();
     mixer.update(dt);
-    seagull.flyCircularly();
     seagullModel->position.set(seagull.getXPos(), seagull.getYPos(),
                                seagull.getZPos());
     std::cout << seagullModel->position.x << ", " << seagullModel->position.z
@@ -134,7 +135,7 @@ int main() {
     if (fishList.size() > 0) {
       for (const auto &fish : fishList) {
         // fish->randomMove();
-        fish->biasedRandomMove(0.001, -0.8, -0.001);
+        // fish->biasedRandomMove(0.001, -0.8, -0.001);
       }
     }
 
