@@ -5,9 +5,12 @@
 #include "threepp/objects/Mesh.hpp"
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <stdint.h>
+#include <stop_token>
 #include <string>
+#include <thread>
 
 using namespace threepp;
 /**
@@ -17,26 +20,24 @@ using namespace threepp;
 class Fish {
 
 private:
+  std::mutex positionMutex;
   std::shared_ptr<threepp::Mesh> mesh;
   double xLocation;
   double yLocation;
   double zLocation;
   RandomGenerator randomizer;
+  std::jthread movementThread;
+  std::function<void()> behaviour;
   void updateMesh() {
     this->mesh->position.set(this->xLocation, this->yLocation, this->zLocation);
   }
-
-public:
-  explicit Fish(int32_t xPos = 0, int32_t yPos = 0, int32_t zPos = 0) {
-    auto geometry = SphereGeometry::create(0.2f);
-    auto material = MeshBasicMaterial::create();
-    material->color = Color::yellow;
-    this->mesh = Mesh::create(geometry, material);
-    this->mesh->position.set(xPos, yPos, zPos);
+  void run(std::stop_token token) {
+    while (!token.stop_requested()) {
+      std::unique_lock<std::mutex> lock(positionMutex);
+      this->behaviour();
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
-  int32_t getX() { return xLocation; }
-  int32_t getY() { return yLocation; }
-  int32_t getZ() { return zLocation; }
 
   /**
    * Updates the fish's location by a random value from -1 to 1 in x,y and z
@@ -54,6 +55,47 @@ public:
     this->yLocation += (yDirectionLength / 2000.0);
     this->zLocation += (zDirectionLength / 2000.0);
     updateMesh();
+  }
+
+public:
+  explicit Fish(double xPos = 0, double yPos = 0, double zPos = 0) {
+    auto geometry = SphereGeometry::create(0.5f);
+    auto material = MeshBasicMaterial::create();
+    material->color = Color::yellow;
+    this->mesh = Mesh::create(geometry, material);
+    this->mesh->position.set(xPos, yPos, zPos);
+    this->behaviour = []() {
+      /* does nothing. Set behaviour with the setBehaviour function */
+    };
+    this->movementThread =
+        std::jthread([this](std::stop_token token) { run(token); });
+  }
+
+  enum class Behaviour { RandomMove };
+
+  /**
+   * Assign a behaviour to the fish through Fish::Behaviour::etc...
+   */
+  void setBehaviour(Behaviour b) {
+    switch (b) {
+    case Behaviour::RandomMove:
+      behaviour = [this] { randomMove(); };
+      break;
+    }
+  }
+
+  double getX() {
+    std::lock_guard<std::mutex> lock(positionMutex);
+    return xLocation;
+  }
+  double getY() {
+    std::lock_guard<std::mutex> lock(positionMutex);
+    return yLocation;
+  }
+
+  double getZ() {
+    std::lock_guard<std::mutex> lock(positionMutex);
+    return zLocation;
   }
 
   std::shared_ptr<Mesh> getMesh() { return this->mesh; }
