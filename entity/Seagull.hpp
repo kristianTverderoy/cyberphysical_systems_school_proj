@@ -1,15 +1,21 @@
 #include "../utility/RandomGenerator.hpp"
 #include "threepp/core/Object3D.hpp"
 #include "threepp/math/MathUtils.hpp"
-#include "threepp/objects/Mesh.hpp"
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <functional>
+#include <mutex>
 #include <stdint.h>
+#include <stop_token>
+#include <thread>
 
 class Seagull {
 private:
   std::shared_ptr<threepp::Object3D> model;
+  std::mutex positionMutex;
+  std::function<void()> behaviour;
   double xPos;
   double yPos;
   double zPos;
@@ -19,40 +25,16 @@ private:
   double yDirection;
   double zDirection;
   RandomGenerator randomizer;
+  std::jthread movementThread;
 
-public:
-  double getXPos() { return this->xPos; }
-  double getYPos() { return this->yPos; }
-  double getZPos() { return this->zPos; }
-  uint8_t getHunderLevel() { return this->hungerLevel; }
-
-  Seagull(double xPos = 0, double yPos = 0, double zPos = 0, double xDir = 0,
-          double yDir = 0, double zDir = 0)
-      : xPos(xPos), yPos(yPos), zPos(zPos), xDirection(xDir), yDirection(yDir),
-        zDirection(zDir) {
-    float len = sqrtf(xDirection * xDirection + yDirection * yDirection +
-                      zDirection * zDirection);
-    if (len > 0) {
-      xDirection /= len;
-      yDirection /= len;
-      zDirection /= len;
+  void run(std::stop_token stop_token) {
+    while (!stop_token.stop_requested()) {
+      std::unique_lock<std::mutex> lock(positionMutex);
+      auto currentBehaviour = behaviour;
+      lock.unlock();
+      currentBehaviour();
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-  };
-
-  // TODO: This random move will probably look very weird, in regards to how a
-  // seagul actually moves.
-  /**
-   * Makes the seagull move in a random direction in only the x and y axis.
-   */
-  void randomMoveWhileFlying() {
-    double xDirection = randomizer.getRandomDouble(0, 100);
-    double yDirection = randomizer.getRandomDouble(0, 100);
-
-    const int xPosOrNegDirection = rand() % 2;
-    const int yPosOrNegDirection = rand() % 2;
-
-    this->xPos += (xDirection / 100) * xPosOrNegDirection;
-    this->yPos += (yDirection / 100) * yPosOrNegDirection;
   }
 
   void flyCircularly() {
@@ -79,6 +61,66 @@ public:
       double angle = atan2(xDirection, zDirection);
       this->model->rotation.y = angle + 90.0;
     }
+  }
+
+public:
+  explicit Seagull(double xPos = 0, double yPos = 0, double zPos = 0,
+                   double xDir = 0, double yDir = 0, double zDir = 0)
+      : xPos(xPos), yPos(yPos), zPos(zPos), xDirection(xDir), yDirection(yDir),
+        zDirection(zDir) {
+    this->behaviour = []() {
+      /* does nothing. Use setBehaviour to set the seagulls behaviour.*/
+    };
+    float len = sqrtf(xDirection * xDirection + yDirection * yDirection +
+                      zDirection * zDirection);
+    if (len > 0) {
+      xDirection /= len;
+      yDirection /= len;
+      zDirection /= len;
+    }
+    this->movementThread =
+        std::jthread([this](std::stop_token token) { run(token); });
+  };
+
+  enum class Behaviour { FlyCircularly };
+
+  double getXPos() {
+    std::lock_guard<std::mutex> lock(positionMutex);
+    return this->xPos;
+  }
+  double getYPos() {
+    std::lock_guard<std::mutex> lock(positionMutex);
+    return this->yPos;
+  }
+  double getZPos() {
+    std::lock_guard<std::mutex> lock(positionMutex);
+    return this->zPos;
+  }
+
+  void setBehaviour(Behaviour b) {
+    switch (b) {
+    case Behaviour::FlyCircularly:
+      behaviour = [this] { flyCircularly(); };
+      break;
+    }
+  }
+
+  uint8_t getHungerLevel() { return this->hungerLevel; }
+
+  // TODO: This random move will probably look very weird, in regards to how a
+  // seagul actually moves.
+  /**
+   * Makes the seagull move in a random direction in only the x and y axis.
+   */
+  void randomMoveWhileFlying() {
+    double xDirection = randomizer.getRandomDouble(0, 100);
+    double yDirection = randomizer.getRandomDouble(0, 100);
+
+    const int xPosOrNegDirection = rand() % 2;
+    const int yPosOrNegDirection = rand() % 2;
+
+    this->xPos += (xDirection / 100) * xPosOrNegDirection;
+    this->yPos += (yDirection / 100) * yPosOrNegDirection;
   }
 
   void diveForFishIfHungry() {
